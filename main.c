@@ -1,23 +1,22 @@
 #include "xc.h"
 #include "lcd_display"
-#include "analog_digital"
 
+//configuration
 #pragma config ICS=PGx1
 #pragma config FWDTEN=OFF
 #pragma config GWRP=OFF
 #pragma config GCP=OFF
 #pragma config JTAGEN=OFF
 
-//CW2: FLASH CONFIGURATION WORD 2
 #pragma config I2C1SEL=PRI
 #pragma config IOL1WAY=OFF
 #pragma config OSCIOFNC=ON
 #pragma config FCKSM=CSECME
 #pragma config FNOSC=FRCPLL
 
+#define BUFFERSIZE 8192
 
-volatile int digitalValues[1024];
-volatile int startAttempt;
+volatile int digitalValues[BUFFERSIZE];
 volatile int stateInit;
 volatile int count;
 
@@ -49,6 +48,21 @@ void setup()
     _T3IE=1;
     T3CONbits.TCKPS=2;
     T3CONbits.TON=1;
+    
+    AD1CON1=0;
+    AD1CON2=0;
+    AD1CON3=0;
+    AD1CHS=0;
+    AD1PCFG=0;
+    AD1CSSL=0;
+     
+}
+
+void __attribute__((__interrupt__,__auto_psv__)) _ADC1Interrupt()
+{
+    _AD1IF=0;
+    digitalValues[ind++]=AD1BUF0;
+    ind&=(BUFFERSIZE-1);
 }
 
 void __attribute__((__interrupt__,__auto_psv__)) _TInterrupt()
@@ -97,17 +111,13 @@ int main(void) {
                 if(stateInit==1)
                 {
                     count=0;
-                    AD1CON1=0;
-                    AD1CON2=0;
-                    AD1CON3=0;
-                    AD1CHS=0;
-                    AD1PCFG=0;
-                    AD1CSSL=0;
-                    
+                    AD1CON1bits.TON=1;
+                
                 }
                 
                 if(count>10)
                 {
+                    AD1CON1bits.TON=0;
                     //set led green
                     //switch state to result
                     stateInit=1;
