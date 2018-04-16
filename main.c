@@ -14,9 +14,11 @@
 #pragma config FCKSM=CSECME
 #pragma config FNOSC=FRCPLL
 
-#define BUFFERSIZE 8192
+#define BUFFPOW 13
+#define RETURN_HOME 2
+#define SHIFT 24
 
-volatile int digitalValues[BUFFERSIZE];
+volatile int digitalValues[1 << BUFFPOW];
 volatile int stateInit;
 volatile int count;
 
@@ -33,6 +35,7 @@ void setup()
     adc_init();
     state=STAND_BY;
     
+    //Timer to measure time elapsed in each state
     T1CON=0;
     TMR1=0;
     PR1=62499;
@@ -41,6 +44,7 @@ void setup()
     T1CONbits.TCKPS=3;
     T1CONbits.TON=1;
     
+    //Timer to use for shifting LCD display
     T3CON=0;
     TMR3=0;
     PR3=62499;
@@ -62,7 +66,7 @@ void __attribute__((__interrupt__,__auto_psv__)) _ADC1Interrupt()
 {
     _AD1IF=0;
     digitalValues[ind++]=AD1BUF0;
-    ind&=(BUFFERSIZE-1);
+    ind&=((1 << BUFFPOW) -1);
 }
 
 void __attribute__((__interrupt__,__auto_psv__)) _TInterrupt()
@@ -74,7 +78,7 @@ void __attribute__((__interrupt__,__auto_psv__)) _TInterrupt()
 void __attribute__((__interrupt__,__auto_psv__)) _T3Interrupt()
 {
     _T3IF=0;
-    lcd_cmd(0b00011000);
+    lcd_cmd(SHIFT); //Shift display
 }
 
 //set lcdRefresh to 1 at any point a state is changed.
@@ -85,11 +89,11 @@ int main(void) {
     {
         switch(state){
             case STAND_BY: 
-                //print "Press Button to Press Engine"
+                //print "Press Button to Start Engine"
                 //timer interrupt to scroll
                 if(stateInit==1)
                 {
-                    lcd_cmd(0b00000010);
+                    lcd_cmd(RETURN_HOME); 
                     lcd_setCursor(0,0);
                     lcd_printStr("Press button to start engine");
                     stateInit ^=1;
@@ -99,10 +103,9 @@ int main(void) {
             case INSTRUCTIONS:
                 if(stateInit==1)
                 {
-                    lcd_cmd(0b00000010);
+                    lcd_cmd(RETURN_HOME);
                     lcd_setCursor(0,0);
-                    lcd_printStr("Press button to start breathing, breathe until"
-                           "green light");
+                    lcd_printStr("Press button to start breathing, breathe until green light");
                     stateInit ^=1;
                 }
                 break;
