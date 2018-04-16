@@ -110,6 +110,7 @@ int main(void) {
             case TEST:
                 if(stateInit==1)
                 {
+                    TMR1=1;
                     count=0;
                     AD1CON1bits.TON=1;
                 
@@ -119,7 +120,7 @@ int main(void) {
                 {
                     AD1CON1bits.TON=0;
                     //set led green
-                    //switch state to result
+                    state=RESULT;
                     stateInit=1;
                 }
                 
