@@ -34,7 +34,7 @@ enum State_def{
 void setup()
 {
     lcd_init();
-    adc_init();
+    sensor_init();
     state=STAND_BY;
     
     //Timer to measure time elapsed in each state
@@ -116,7 +116,7 @@ int main(void) {
     //computations done in main in Results state?
     int mean;
     int prev_mean;
-    char BAC_estimate[20]; //string for outputting to BAC and photon
+    char BAC_estimate[20]; //string for outputting to LCD
     while(1)
     {
         switch(state){
@@ -172,7 +172,7 @@ int main(void) {
                     lcd_printStr("BAC:")
                     lcd_setCursor(0,1);
                     //delay so that the BAC is actually shown
-                    lcd_printStr(BAC_Esimate);
+                    lcd_printStr(BAC_estimate);
                     if(mean>0) //whatever the condition is for not allowing driving(in digital form)
                     {
                         //send message
