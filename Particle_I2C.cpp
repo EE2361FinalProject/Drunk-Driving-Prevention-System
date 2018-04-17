@@ -57,9 +57,9 @@ void bacHandler (const char *event, const char *data) {
 
 void setup() {
 	
-	//Use Serial for debugging
-	#ifdef DEBUG
-	Serial.begin(9600);
+    //Use Serial for debugging
+    #ifdef DEBUG
+    Serial.begin(9600);
     while (!Serial);
     #endif
     
