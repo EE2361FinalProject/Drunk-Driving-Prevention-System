@@ -12,6 +12,7 @@ bool publish = false;
 
 #ifdef DEBUG 
 char c;
+String sC = "";
 #else
 int bac = 0;
 String sBAC = "";
@@ -52,6 +53,7 @@ void bacHandler (const char *event, const char *data) {
         Particle.publish ("BAC_High");
     }
     #endif
+    
 }
 
 
@@ -63,6 +65,7 @@ void setup() {
     while (!Serial);
     #endif
     
+    Particle.connect();
     if (!Wire.isEnabled ()) {
         Wire.begin(0x1);
         Serial.println ("Wire is enabled");
@@ -76,7 +79,8 @@ void loop() {
     if (publish)
     {   
         #ifdef DEBUG
-        Particle.publish ("BAC_result", c);
+        sC = String (c);
+        Particle.publish ("BAC_result", sC);
         #else
         sBAC = String (bac);
         Particle.publish ("BAC_result", sBAC);
