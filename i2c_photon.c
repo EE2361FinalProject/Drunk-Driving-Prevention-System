@@ -1,4 +1,5 @@
 #include "xc.h"
+#include "photon.h"
 
 // CW1: FLASH CONFIGURATION WORD 1 (see PIC24 Family Reference Manual 24.1)
 #pragma config ICS = PGx1 // Comm Channel Select (Emulator EMUC1/EMUD1 pins are shared with PGC1/PGD1)
@@ -14,7 +15,7 @@
 // Fail-Safe Clock Monitor is enabled)
 #pragma config FNOSC = FRCPLL // Oscillator Select (Fast RC Oscillator with PLL module (FRCPLL))
 
-void setup () {
+void photon_init () {
     CLKDIVbits.RCDIV = 0;
     AD1PCFGbits.PCFG4 = 1; //SDA2
     AD1PCFGbits.PCFG5 = 1; //SCL2
