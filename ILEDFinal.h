@@ -5,8 +5,9 @@
 extern "C" {
 #endif
 
-void turnonwheel ();
-
+void turnonwheel (void);
+void turnoffwheel (void);
+void writeColor (int r, int g, int b);
 
 #ifdef	__cplusplus
 }
