@@ -21,6 +21,8 @@
 #define BUFFPOW 13
 #define SHIFT 24
 #define RETURN_HOME 2
+#define BREATHING_LENGTH 10
+
 
 volatile int digitalValues[1 << BUFFPOW];
 volatile int stateInit;
@@ -63,6 +65,8 @@ void setup()
     _INT0IF=0;
     _INT0EP=1; //interrupt on negative edge
     _INT0IE=1;
+
+    LATBbits.LATB12 = 0; //Make sure engine is off
 }
 
 //allows to change state. May modifty with conditions for each state this way if needed
@@ -91,12 +95,14 @@ void change_state()
 void __attribute__((__interrupt__,__auto_psv__)) _INT0Interrupt()
 {
     _INT0IF=0;
+    //Debounce button
     T4CON=0;
     TMR4=0;
     _T4IF=0;
     PR4=15999;
     T4CONbits.TON=1;
-    while(!_T4IF)
+    while(!_T4IF);
+    _T4IF = 0;
     change_state();
 }
 
@@ -114,6 +120,7 @@ void __attribute__((__interrupt__,__auto_psv__)) _TInterrupt()
     count++;
 }
 
+//Timer interrupt to scroll
 void __attribute__((__interrupt__,__auto_psv__)) _T3Interrupt()
 {
     _T3IF=0;
@@ -121,7 +128,6 @@ void __attribute__((__interrupt__,__auto_psv__)) _T3Interrupt()
 }
 
 int main(void) {
-    //computations done in main in Results state?
     int mean;
     int prev_mean;
     char BAC_estimate[20]; //string for outputting to LCD
@@ -129,7 +135,6 @@ int main(void) {
     {
         switch(state){
             case STAND_BY: 
-                //timer interrupt to scroll
                 if(stateInit==1)
                 {
                     lcd_cmd(RETURN_HOME);
@@ -158,7 +163,7 @@ int main(void) {
 	            iLED_wheel_on();
                 }
                 
-                if(count>10)
+                if(count> BREATHING_LENGTH)
                 {
                     AD1CON1bits.TON=0;
 		    iLED_wheel_off();
@@ -189,7 +194,7 @@ int main(void) {
                     lcd_printStr(BAC_estimate);
                     if(mean>THRESHOLD) 
                     {
-			send_DAC(mean);
+			send_dac(mean);
 			lcd_setCursor(0,0);
 			lcd_printStr("Don't");
 			lcd_setCursor(0,1);
@@ -204,7 +209,7 @@ int main(void) {
                         lcd_printStr("Safely");
                     }
                 }
-                break;            
+                break;
         }
     }
     return 0;
