@@ -3,7 +3,7 @@
 //#define DEBUG //Uncomment to DEBUG with Serial
 
 #ifdef DEBUG
-#define THRESHOLD 'L'
+#define THRESHOLD 980
 #else
 #define THRESHOLD 0.8 //TODO: Cement this value
 #endif
@@ -11,7 +11,7 @@
 bool publish = false;
 
 #ifdef DEBUG 
-char c;
+int c;
 String sC = "";
 #else
 int bac = 0;
@@ -29,8 +29,14 @@ void receiveEvent (int howMany) {
     while (Wire.available()) {
         publish = true;
         #ifdef DEBUG
-        c = Wire.read ();
-        Serial.print (c);
+	if (firstTime) {
+            c = Wire.read () * 4;
+            firstTime = false;
+	}
+        else {
+            c += Wire.read ();
+            Serial.print (c);
+        }
         #else
         if (firstTime) {
            bac = Wire.read() * 4;
