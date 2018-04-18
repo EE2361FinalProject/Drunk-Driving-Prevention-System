@@ -70,6 +70,8 @@ void setup()
 }
 
 //allows to change state. May modifty with conditions for each state this way if needed
+//this is bad. User could press button rapidly to hit result state then drive since mean will be zero
+//ill add a version below this function that might work better since this is only used in INT0 interrupt
 void change_state() 
 {
     switch(state){
@@ -92,9 +94,41 @@ void change_state()
     stateInit=1;           
 }
 
+void handleButtonPress()
+{
+	switch(state)
+	{
+		case STAND_BY:
+			if(count > 1) //ensure user isn't speeding through states
+			{
+				state = INSTRUCTIONS;
+				count = 0;
+			}
+			break;
+		case INSTRUCTIONS:
+			if(count > 1)	//ensure user isn't speeding thorugh states / reads instructions
+			{
+				state = TEST;
+				count = 0;
+			}
+			break;
+		case TEST:
+			//code will auto transition to result when test is complete
+			break;
+		case RESULT:
+			if(count > 5) //random time value to "start car"
+			{
+				state = STAND_BY;
+				count = 0;
+			}
+			break;
+	}
+}
+
 void __attribute__((__interrupt__,__auto_psv__)) _INT0Interrupt()
 {
     _INT0IF=0;
+	
     //Debounce button
     T4CON=0;
     TMR4=0;
@@ -103,7 +137,9 @@ void __attribute__((__interrupt__,__auto_psv__)) _INT0Interrupt()
     T4CONbits.TON=1;
     while(!_T4IF);
     _T4IF = 0;
-    change_state();
+	
+    //change_state();
+    handleButtonPress();
 }
 
 //should go in sensor file
@@ -158,12 +194,12 @@ int main(void) {
                 if(stateInit==1)
                 {
                     TMR1=1;
-                    count=0;
+                    //count=0;
                     AD1CON1bits.TON=1;
 	            iLED_wheel_on();
                 }
                 
-                if(count> BREATHING_LENGTH)
+                if(count > BREATHING_LENGTH)
                 {
                     AD1CON1bits.TON=0;
 		    iLED_wheel_off();
@@ -176,6 +212,9 @@ int main(void) {
             case RESULT:
                 if(stateInit==1)
                 {
+			
+		    //can we make this a function? really clogs up main when someone is trying to see what we are 
+			//doing. Could easily say something like handleData(); to clean up. Thoughts?
                     static int i;
                     mean=0;
                     for(int i=0, i<(1<<BUFFPOW), i++)
@@ -190,8 +229,8 @@ int main(void) {
                     lcd_setCursor(0,1);
                     count=0
 		    TMR1=1;
+		    lcd_printStr(BAC_estimate);
 		    while(count<2); //delay so that the BAC is shown
-                    lcd_printStr(BAC_estimate);
                     if(mean>THRESHOLD) 
                     {
 			send_dac(mean);
@@ -199,10 +238,12 @@ int main(void) {
 			lcd_printStr("Don't");
 			lcd_setCursor(0,1);
 			lcd_setCursor("Drive");
+			iLED_color(255, 0, 0); //indicate user failed (red)
                     }
                     else
                     {
                         LATBbits.LATB12=1; //indictate engine has turned on
+			send_dac(mean);		//should send data either way. Could be good to know if repeat DUI offenders drive buzzed
                         lcd_setCursor(0,0);
                         lcd_printStr("Drive");
                         lcd_setCursor(0,1);
