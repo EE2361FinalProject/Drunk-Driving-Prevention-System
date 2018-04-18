@@ -91,7 +91,12 @@ void change_state()
 void __attribute__((__interrupt__,__auto_psv__)) _INT0Interrupt()
 {
     _INT0IF=0;
-    //debounce
+    T4CON=0;
+    TMR4=0;
+    _T4IF=0;
+    PR4=15999;
+    T4CONbits.TON=1;
+    while(!_T4IF)
     change_state();
 }
 
@@ -114,8 +119,6 @@ void __attribute__((__interrupt__,__auto_psv__)) _T3Interrupt()
     _T3IF=0;
     lcd_cmd(SHIFT); //Shift display
 }
-
-//set lcdRefresh to 1 at any point a state is changed.
 
 int main(void) {
     //computations done in main in Results state?
@@ -152,13 +155,14 @@ int main(void) {
                     TMR1=1;
                     count=0;
                     AD1CON1bits.TON=1;
-                
+	            iLED_wheel_on();
                 }
                 
                 if(count>10)
                 {
                     AD1CON1bits.TON=0;
-                    //set led green
+		    iLED_wheel_off();
+                    iLED_color(0, 255, 0); //indicate test is finished(green)
                     state=RESULT;
                     stateInit=1;
                 }
@@ -181,17 +185,19 @@ int main(void) {
                     lcd_setCursor(0,1);
                     count=0
 		    TMR1=1;
-		    while(count<1); //delay so that the BAC is actually shown
+		    while(count<2); //delay so that the BAC is shown
                     lcd_printStr(BAC_estimate);
-                    if(mean>0) //whatever the condition is for not allowing driving(in digital form)
+                    if(mean>THRESHOLD) 
                     {
-                        //send message
-                        //display to the lcd that they should not drive
+			send_DAC(mean);
+			lcd_setCursor(0,0);
+			lcd_printStr("Don't");
+			lcd_setCursor(0,1);
+			lcd_setCursor("Drive");
                     }
                     else
                     {
-                        //just an example. whatever pin we have the engine indicator on
-                        LATBbits.LATB0=1;
+                        LATBbits.LATB12=1; //indictate engine has turned on
                         lcd_setCursor(0,0);
                         lcd_printStr("Drive");
                         lcd_setCursor(0,1);
