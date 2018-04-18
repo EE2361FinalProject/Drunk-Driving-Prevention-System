@@ -16,6 +16,7 @@ String sC = "";
 #else
 int bac = 0;
 String sBAC = "";
+bool firstTime = true;
 #endif
 
 /* Purpose: Handler for I2C receiving
@@ -31,8 +32,12 @@ void receiveEvent (int howMany) {
         c = Wire.read ();
         Serial.print (c);
         #else
-        bac = Wire.read();
-        //TODO: Convert bac from fixed point representation sent through I2C
+        if (firstTime) {
+           bac = Wire.read() * 4;
+           firstTime = false;
+        }
+        else
+           bac += Wire.read ();
         #endif
     }
 }
