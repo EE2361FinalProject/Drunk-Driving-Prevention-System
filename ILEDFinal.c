@@ -5,15 +5,20 @@
 
 volatile int i= 0;
 
-void turnonwheel(void){
- TRISBbits.TRISB13 = 0;
- LATBbits.LATB13 = 0;
-_T5IE=1;
-_T5IF=0;
-TMR5=0;
-PR5= 1000;
-T5CON = 0x8030;
+void turnonwheel (void) {
+     TRISBbits.TRISB13 = 0;
+     LATBbits.LATB13 = 0;
+     _T5IE=1;
+     _T5IF=0;
+     TMR5=0;
+     PR5= 1000;
+     T5CON = 0x8030;
 }
+
+void turnoffwheel (void) {
+    T5CONbits.TON = 0;
+}
+
 
 uint32_t packColor(unsigned char Red, unsigned char Blu, unsigned char Grn) {
     unsigned long int RGBval = 0;
