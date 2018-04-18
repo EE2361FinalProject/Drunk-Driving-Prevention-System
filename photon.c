@@ -44,6 +44,13 @@ void photon_cmd (char command) {
     while (I2C2CONbits.PEN == 1);
 }
 
+#ifndef DEBUG
+void send_dac (int mean) {
+    photon_cmd (mean >> 2);
+    photon_cmd (mean & 3);
+}
+#endif
+
 /*
  * Code to test I2C with Photon: Code characters 1 by 1
  * The character is printed every 3 seconds
