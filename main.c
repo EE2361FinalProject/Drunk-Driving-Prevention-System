@@ -2,6 +2,7 @@
 #include "lcd_display.h"
 #include "sensor.h"
 #include "photon.h"
+#include "iLED.h"
 
 //configuration
 #pragma config ICS=PGx1
@@ -178,7 +179,9 @@ int main(void) {
                     lcd_setCursor(0,0);
                     lcd_printStr("BAC:")
                     lcd_setCursor(0,1);
-                    //delay so that the BAC is actually shown
+                    count=0
+		    TMR1=1;
+		    while(count<1); //delay so that the BAC is actually shown
                     lcd_printStr(BAC_estimate);
                     if(mean>0) //whatever the condition is for not allowing driving(in digital form)
                     {
