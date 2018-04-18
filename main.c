@@ -2,7 +2,7 @@
 #include "lcd_display.h"
 #include "sensor.h"
 #include "photon.h"
-#include "iLED.h"
+#include "ILEDFinal.h"
 
 //configuration
 #pragma config ICS=PGx1
@@ -22,6 +22,7 @@
 #define SHIFT 24
 #define RETURN_HOME 2
 #define BREATHING_LENGTH 10
+#define CAR_ON_TIME 5
 
 
 volatile int digitalValues[1 << BUFFPOW];
@@ -69,29 +70,14 @@ void setup()
     LATBbits.LATB12 = 0; //Make sure engine is off
 }
 
-//allows to change state. May modifty with conditions for each state this way if needed
-//this is bad. User could press button rapidly to hit result state then drive since mean will be zero
-//ill add a version below this function that might work better since this is only used in INT0 interrupt
-void change_state() 
-{
-    switch(state){
-        case STAND_BY:
-            state=INSTRUCTIONS;
-            TMR3 = 0;
-            break;
-        case INSTRUCTIONS:
-            state=TEST;
-            TMR3 = 0;
-            break;
-        case TEST:
-            state=RESULT;
-	    _T3IE = 0; //Stop shifting
-            break;
-        case RESULT:
-            state=STAND_BY;
-            break;
+int handleData () {
+    int i, prev_mean, mean = 0;
+    for(i = 0, i<(1<<BUFFPOW), i++)
+    {
+	prev_mean = mean;
+	mean += digitalValues[i]/(i+1);
     }
-    stateInit=1;           
+    return mean;
 }
 
 void handleButtonPress()
@@ -103,6 +89,7 @@ void handleButtonPress()
 			{
 				state = INSTRUCTIONS;
 				count = 0;
+				TMR3 = 0;
 			}
 			break;
 		case INSTRUCTIONS:
@@ -110,15 +97,17 @@ void handleButtonPress()
 			{
 				state = TEST;
 				count = 0;
+				TMR3 = 0;
 			}
 			break;
 		case TEST:
 			//code will auto transition to result when test is complete
 			break;
 		case RESULT:
-			if(count > 5) //random time value to "start car"
+			if(count > CAR_ON_TIME) //random time value to "start car"
 			{
 				state = STAND_BY;
+				LATBbits.LATB12=0; //Turn off car
 				count = 0;
 			}
 			break;
@@ -137,8 +126,7 @@ void __attribute__((__interrupt__,__auto_psv__)) _INT0Interrupt()
     T4CONbits.TON=1;
     while(!_T4IF);
     _T4IF = 0;
-	
-    //change_state();
+
     handleButtonPress();
 }
 
@@ -165,8 +153,8 @@ void __attribute__((__interrupt__,__auto_psv__)) _T3Interrupt()
 
 int main(void) {
     int mean;
-    int prev_mean;
     char BAC_estimate[20]; //string for outputting to LCD
+    setup ();
     while(1)
     {
         switch(state){
@@ -194,17 +182,17 @@ int main(void) {
                 if(stateInit==1)
                 {
                     TMR1=1;
-                    //count=0;
                     AD1CON1bits.TON=1;
-	            iLED_wheel_on();
+	            turnonwheel();
                 }
                 
                 if(count > BREATHING_LENGTH)
                 {
                     AD1CON1bits.TON=0;
-		    iLED_wheel_off();
-                    iLED_color(0, 255, 0); //indicate test is finished(green)
-                    state=RESULT;
+		    turnoffwheel();
+                    writeColor(0, 255, 0); //indicate test is finished(green)
+                    _T3IE = 0; //stop shifting
+		    state=RESULT;
                     stateInit=1;
                 }
                 
@@ -212,38 +200,28 @@ int main(void) {
             case RESULT:
                 if(stateInit==1)
                 {
-			
-		    //can we make this a function? really clogs up main when someone is trying to see what we are 
-			//doing. Could easily say something like handleData(); to clean up. Thoughts?
-                    static int i;
-                    mean=0;
-                    for(int i=0, i<(1<<BUFFPOW), i++)
-                    {
-                        prev_mean=mean;
-                        mean+=digitalValues[i]/(i+1);
-                    }
+		    mean = handleData();
                     sprintf(BAC_estimate, "%5.1f", (DIGITAL_TO_BAC)*mean);
+		    send_dac (mean); 
                     lcd_cmd(RETURN_HOME);
                     lcd_setCursor(0,0);
                     lcd_printStr("BAC:")
                     lcd_setCursor(0,1);
                     count=0
-		    TMR1=1;
+		    TMR1=0; //Don't know why this was set to 1, changed it to 0.
 		    lcd_printStr(BAC_estimate);
 		    while(count<2); //delay so that the BAC is shown
                     if(mean>THRESHOLD) 
                     {
-			send_dac(mean);
 			lcd_setCursor(0,0);
 			lcd_printStr("Don't");
 			lcd_setCursor(0,1);
 			lcd_setCursor("Drive");
-			iLED_color(255, 0, 0); //indicate user failed (red)
+			writeColor(255, 0, 0); //indicate user failed (red)
                     }
                     else
                     {
                         LATBbits.LATB12=1; //indictate engine has turned on
-			send_dac(mean);		//should send data either way. Could be good to know if repeat DUI offenders drive buzzed
                         lcd_setCursor(0,0);
                         lcd_printStr("Drive");
                         lcd_setCursor(0,1);
