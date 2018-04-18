@@ -1,7 +1,5 @@
-#include "xc.h"
+include "xc.h"
 #include "lcd_display.h"
-
-#define RETURN_HOME 2
 
 void lcd_cmd(char command) //sends a series of data to lcd including a start bit
 //address byte, control byte, and command byte. Finished with stop byte
@@ -24,7 +22,6 @@ void lcd_cmd(char command) //sends a series of data to lcd including a start bit
 
 void lcd_setCursor(char x, char y) 
 {
-    lcd_cmd(RETURN_HOME);
     char Loc=y<<6; //y bit is sixth in from left
     Loc|=x; //x location in command is first 3 bits
     Loc+=0x80; //necessary part for setting location with lcd_cmd

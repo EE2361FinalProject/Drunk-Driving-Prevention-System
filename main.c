@@ -19,6 +19,7 @@
 #define DIGITAL_TO_BAC 1/1000 //currently arbitary conversion factor
 #define BUFFPOW 13
 #define SHIFT 24
+#define RETURN_HOME 2
 
 volatile int digitalValues[1 << BUFFPOW];
 volatile int stateInit;
@@ -68,13 +69,16 @@ void change_state()
 {
     switch(state){
         case STAND_BY:
-            state=INSTRUCTIONS;                   
+            state=INSTRUCTIONS;
+            TMR3 = 0;
             break;
         case INSTRUCTIONS:
             state=TEST;
+            TMR3 = 0;
             break;
         case TEST:
             state=RESULT;
+	    _T3IE = 0; //Stop shifting
             break;
         case RESULT:
             state=STAND_BY;
@@ -124,6 +128,7 @@ int main(void) {
                 //timer interrupt to scroll
                 if(stateInit==1)
                 {
+                    lcd_cmd(RETURN_HOME);
                     lcd_setCursor(0,0);
                     lcd_printStr("Press button to start engine");
                     stateInit ^=1;
@@ -133,6 +138,7 @@ int main(void) {
             case INSTRUCTIONS:
                 if(stateInit==1)
                 {
+		    lcd_cmd(RETURN_HOME);
                     lcd_setCursor(0,0);
                     lcd_printStr("Press button to start breathing, breathe until green light");
                     stateInit ^=1;
@@ -168,6 +174,7 @@ int main(void) {
                         mean+=digitalValues[i]/(i+1);
                     }
                     sprintf(BAC_estimate, "%5.1f", (DIGITAL_TO_BAC)*mean);
+                    lcd_cmd(RETURN_HOME);
                     lcd_setCursor(0,0);
                     lcd_printStr("BAC:")
                     lcd_setCursor(0,1);
