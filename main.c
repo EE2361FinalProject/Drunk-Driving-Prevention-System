@@ -130,7 +130,7 @@ void __attribute__((__interrupt__,__auto_psv__)) _INT0Interrupt()
 {
     _INT0IF=0;
 	
-    //Debounce button
+    //Debounce button (1 ms)
     T4CON=0;
     TMR4=0;
     _T4IF=0;
@@ -142,7 +142,7 @@ void __attribute__((__interrupt__,__auto_psv__)) _INT0Interrupt()
     handleButtonPress();
 }
 
-//should go in sensor file
+//should go in sensor file?
 void __attribute__((__interrupt__,__auto_psv__)) _ADC1Interrupt()
 {
     _AD1IF=0;
@@ -173,7 +173,7 @@ int main(void) {
             case STAND_BY: 
                 if(stateInit==1)
                 {
-                    lcd_cmd(RETURN_HOME);
+                    lcd_cmd(RETURN_HOME); //necessary after scrolling
                     lcd_setCursor(0,0);
                     lcd_printStr("Press button to start engine");
                     stateInit ^=1;
@@ -212,16 +212,16 @@ int main(void) {
             case RESULT:
                 if(stateInit==1)
                 {
-		    mean = handleData();
-                    sprintf(BAC_estimate, "%5.1f", (DIGITAL_TO_BAC)*mean);
-		    send_dac (mean); 
-                    lcd_cmd(RETURN_HOME);
+		    mean = handleData(); //computes mean over all values in buffer, about 1 second of data acquisition
+                    sprintf(BAC_estimate, "%5.1f", (DIGITAL_TO_BAC)*mean); //convert mean to BAC and place in string
+		    send_dac (mean); //digital value to the photon
+                    lcd_cmd(RETURN_HOME); 
                     lcd_setCursor(0,0);
                     lcd_printStr("BAC:")
                     lcd_setCursor(0,1);
+		    lcd_printStr(BAC_estimate);
                     count=0
 		    TMR1=0; //Don't know why this was set to 1, changed it to 0.
-		    lcd_printStr(BAC_estimate);
 		    while(count<2); //delay so that the BAC is shown
                     if(mean>THRESHOLD) 
                     {
@@ -230,7 +230,7 @@ int main(void) {
 			lcd_setCursor(0,1);
 			lcd_setCursor("Drive");
 			writeColor(255, 0, 0); //indicate user failed (red)
-			//button press at this point brings user back to standby if count<FAILED_RESULT_TIME
+			//button press at this point brings user back to standby if count>FAILED_RESULT_TIME
                     }
                     else
                     {
@@ -240,7 +240,7 @@ int main(void) {
                         lcd_setCursor(0,1);
                         lcd_printStr("Safely");
 			writeColor(0,0,255); //indicate pass (blue)
-			//button press at this point brings user back to standby if count<CAR_ON_TIME
+			//button press at this point brings user back to standby if count>CAR_ON_TIME
                     }
                 }
                 break;
