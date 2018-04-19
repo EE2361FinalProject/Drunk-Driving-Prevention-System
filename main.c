@@ -23,6 +23,7 @@
 #define RETURN_HOME 2
 #define BREATHING_LENGTH 10
 #define CAR_ON_TIME 5
+#define FAILED_RESULT_TIME 5 
 
 
 volatile int digitalValues[1 << BUFFPOW];
@@ -104,11 +105,22 @@ void handleButtonPress()
 			//code will auto transition to result when test is complete
 			break;
 		case RESULT:
-			if(count > CAR_ON_TIME) //random time value to "start car"
+			if(mean>THRESHOLD)
 			{
-				state = STAND_BY;
-				LATBbits.LATB12=0; //Turn off car
-				count = 0;
+				if(count>FAILED_RESULT_TIME) //allows user to try again if failed
+				{
+					state=STAND_BY;
+					count=0;
+				}
+			}
+			else	   
+			{
+				if(count > CAR_ON_TIME) //random time value to "start car"
+				{
+					state = STAND_BY;
+					LATBbits.LATB12=0; //Turn off car
+					count = 0;
+				}
 			}
 			break;
 	}
@@ -218,6 +230,7 @@ int main(void) {
 			lcd_setCursor(0,1);
 			lcd_setCursor("Drive");
 			writeColor(255, 0, 0); //indicate user failed (red)
+			//button press at this point brings user back to standby if count<FAILED_RESULT_TIME
                     }
                     else
                     {
@@ -226,6 +239,8 @@ int main(void) {
                         lcd_printStr("Drive");
                         lcd_setCursor(0,1);
                         lcd_printStr("Safely");
+			writeColor(0,0,255); //indicate pass (blue)
+			//button press at this point brings user back to standby if count<CAR_ON_TIME
                     }
                 }
                 break;
