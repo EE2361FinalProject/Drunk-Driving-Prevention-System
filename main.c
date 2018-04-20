@@ -68,6 +68,7 @@ void setup()
     _INT0EP=1; //interrupt on negative edge
     _INT0IE=1;
 
+    TRISBbits.TRISB12=0; //set engine LED as output
     LATBbits.LATB12 = 0; //Make sure engine is off
 }
 
