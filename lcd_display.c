@@ -1,4 +1,4 @@
-include "xc.h"
+#include "xc.h"
 #include "lcd_display.h"
 
 void lcd_cmd(char command) //sends a series of data to lcd including a start bit
