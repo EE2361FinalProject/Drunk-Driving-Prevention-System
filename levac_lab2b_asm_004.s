@@ -1,23 +1,23 @@
 .include "xc.inc"
 .text 
 
- .global _write_0, _write_1, _delay_100us
+.global _write_0, _write_1, _delay_100us
  
  _write_0:
-   bset LATB, 0xD ;RB13 is used
+   bset LATB, #0xD ;RB13 is used
    repeat #3
    nop
-   bclr LATB, 0xD 
+   bclr LATB, #0xD 
    repeat #8
    nop
    return
      
  _write_1:
-    bset LATB, 0xD
-    repeat #9
+    bset LATB, #0xD
+    repeat #8
     nop
-    clr LATB, 0xD
-    repeat #2
+    bclr LATB, #0xD
+    repeat #3
     nop
     return
 
