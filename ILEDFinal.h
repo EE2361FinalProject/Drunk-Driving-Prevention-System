@@ -8,6 +8,7 @@ extern "C" {
 void turnonwheel (void);
 void turnoffwheel (void);
 void writeColor (int r, int g, int b);
+void iLED_setup (void);
 
 #ifdef	__cplusplus
 }
