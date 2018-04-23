@@ -22,6 +22,7 @@
 #define BUFFPOW 11
 #define SHIFT 24
 #define RETURN_HOME 2
+#define CLEAR_DISPLAY 1
 #define BREATHING_LENGTH 10
 #define CAR_ON_TIME 5
 #define FAILED_RESULT_TIME 5 
@@ -156,7 +157,10 @@ int main(void) {
         switch (state) {
             case STAND_BY:
                 if (stateInit == 1) {
+                    LATBbits.LATB12=0;
+                    _T3IE=1;
                     lcd_cmd(RETURN_HOME); //necessary after scrolling
+                    lcd_cmd(CLEAR_DISPLAY);
                     lcd_setCursor(0, 0);
                     lcd_printStr("Press button to start engine");
                     stateInit ^= 1;
@@ -183,7 +187,7 @@ int main(void) {
                 }
                 _INT0IF = 0;
                 while (!_INT0IF);
-                _INT0IF = 0;
+                _INT0IF = 0;  
                 T4CON = 0;
                 TMR4 = 0;
                 _T4IF = 0;
@@ -198,10 +202,11 @@ int main(void) {
                 if (stateInit == 1) {
                     _T3IE = 0; //stop shifting
                     lcd_cmd(RETURN_HOME);
+                    lcd_cmd(CLEAR_DISPLAY);
                     lcd_setCursor(0, 0);
-                    lcd_printStr("Taking  ");
+                    lcd_printStr("Taking");
                     lcd_setCursor(0, 1);
-                    lcd_printStr("Data  ");
+                    lcd_printStr("Data");
                     TMR1 = 0;
                     count = 0;
                     AD1CON1bits.ADON = 1;
@@ -228,26 +233,29 @@ int main(void) {
                             send_dac(mean); //digital value to the photon
 #endif
                     lcd_cmd(RETURN_HOME);
+                    lcd_cmd(CLEAR_DISPLAY);
                     lcd_setCursor(0, 0);
-                    lcd_printStr("BAC:  ");
+                    lcd_printStr("BAC:");
                     lcd_setCursor(0, 1);
                     lcd_printStr(BAC_estimate);
                     count = 0;
                     TMR1 = 0; //Don't know why this was set to 1, changed it to 0.
-                    while (count < 2); //delay so that the BAC is shown
+                    while (count < 5); //delay so that the BAC is shown
                     if (mean > THRESHOLD) {
+                        lcd_cmd(CLEAR_DISPLAY);
                         lcd_setCursor(0, 0);
                         lcd_printStr("Don't");
                         lcd_setCursor(0, 1);
-                        lcd_printStr("Drive! ");
+                        lcd_printStr("Drive!");
                         writeColor(255, 0, 0); //indicate user failed (red)
                         //button press at this point brings user back to standby if count>FAILED_RESULT_TIME
                     } else {
                         LATBbits.LATB12 = 1; //indicate engine has turned on
+                        lcd_cmd(CLEAR_DISPLAY);
                         lcd_setCursor(0, 0);
                         lcd_printStr("Drive");
                         lcd_setCursor(0, 1);
-                        lcd_printStr("Safely! ");
+                        lcd_printStr("Safely!");
                         writeColor(0, 0, 255); //indicate pass (blue)
                         //button press at this point brings user back to standby if count>CAR_ON_TIME
                     }

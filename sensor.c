@@ -12,12 +12,16 @@
 
 void sensor_init()
 {
+    AD1CON1=0;
+    AD1CON2=0;
+    AD1CON3=0;
+    AD1CHS=0;
     AD1CON1bits.SSRC=0b111;
     AD1CON1bits.ASAM = 1;
     AD1CON3bits.SAMC = 31;
     AD1CON3bits.ADCS = 63;
-    AD1CON2=0;
     AD1PCFGbits.PCFG0 = 0;
+    _AD1IE=1;
     _TRISA0 = 1;
 }
 
