@@ -73,7 +73,8 @@ void setup() {
     CNPU2bits.CN23PUE = 1;
     _INT0IF = 0;
     _INT0EP = 1; //interrupt on negative edge
-
+    _INT0IE=1;
+    
     TRISBbits.TRISB12 = 0; //set engine LED as output
     LATBbits.LATB12 = 0; //Make sure engine is off
 }
@@ -129,8 +130,19 @@ void handleButtonPress() {
     }
 }
 
-//should go in sensor file?
+void __attribute__((__interrupt__, __auto_psv__)) _INT0Interrupt() {
+    T4CON = 0;
+    TMR4 = 0;
+    _T4IF = 0;
+    PR4 = 15999;
+    T4CONbits.TON = 1;
+    while (!_T4IF);
+    _T4IF = 0;
+    _INT0IF=0;
+    handleButtonPress();
+}
 
+//should go in sensor file?
 void __attribute__((__interrupt__, __auto_psv__)) _ADC1Interrupt() {
     _AD1IF = 0;
     digitalValues[ind++] = ADC1BUF0;
@@ -165,37 +177,17 @@ int main(void) {
                     lcd_printStr("Press button to start engine");
                     stateInit ^= 1;
                 }
-                _INT0IF = 0;
-                while (!_INT0IF);
-                _INT0IF = 0;
-                T4CON = 0;
-                TMR4 = 0;
-                _T4IF = 0;
-                PR4 = 15999;
-                T4CONbits.TON = 1;
-                while (!_T4IF);
-                _T4IF = 0;
-                handleButtonPress();
+                
                 break;
 
             case INSTRUCTIONS:
                 if (stateInit == 1) {
-                    lcd_cmd(RETURN_HOME);
+                    lcd_cmd(RETURN_HOME); //second INT0Interrupt occurred
                     lcd_setCursor(0, 0);
                     lcd_printStr("Press button, breathe until green light");
                     stateInit ^= 1;
                 }
-                _INT0IF = 0;
-                while (!_INT0IF);
-                _INT0IF = 0;  
-                T4CON = 0;
-                TMR4 = 0;
-                _T4IF = 0;
-                PR4 = 15999;
-                T4CONbits.TON = 1;
-                while (!_T4IF);
-                _T4IF = 0;
-                handleButtonPress();
+                
                 break;
 
             case TEST:
@@ -260,17 +252,7 @@ int main(void) {
                         //button press at this point brings user back to standby if count>CAR_ON_TIME
                     }
                 }
-                _INT0IF = 0;
-                while (!_INT0IF);
-                _INT0IF = 0;
-                T4CON = 0;
-                TMR4 = 0;
-                _T4IF = 0;
-                PR4 = 15999;
-                T4CONbits.TON = 1;
-                while (!_T4IF);
-                _T4IF = 0;
-                handleButtonPress();
+                
                 break;
         }
     }
