@@ -33,6 +33,7 @@ volatile int mean;
 volatile int digitalValues[1 << BUFFPOW];
 volatile int stateInit, ind;
 volatile int count;
+volatile int int0count;
 
 enum State_def {
     STAND_BY,
@@ -42,7 +43,6 @@ enum State_def {
 } state;
 
 void setup() {
-
     CLKDIVbits.RCDIV = 0;
     iLED_setup();
     lcd_init(32);
@@ -73,7 +73,8 @@ void setup() {
     CNPU2bits.CN23PUE = 1;
     _INT0IF = 0;
     _INT0EP = 1; //interrupt on negative edge
-
+    _INT0IE=1;
+    
     TRISBbits.TRISB12 = 0; //set engine LED as output
     LATBbits.LATB12 = 0; //Make sure engine is off
 }
@@ -115,12 +116,15 @@ void handleButtonPress() {
                 if (count > FAILED_RESULT_TIME) //allows user to try again if failed
                 {
                     state = STAND_BY;
+                    stateInit=1;
                     count = 0;
                 }
-            } else {
+            } 
+            else {
                 if (count > CAR_ON_TIME) //random time value to "start car"
                 {
                     state = STAND_BY;
+                    stateInit=1;
                     LATBbits.LATB12 = 0; //Turn off car
                     count = 0;
                 }
@@ -129,8 +133,23 @@ void handleButtonPress() {
     }
 }
 
-//should go in sensor file?
+void __attribute__((__interrupt__, __auto_psv__)) _INT0Interrupt() {
+    _INT0IE=0;
+    int0count++;
+    T4CON = 0;
+    T4CONbits.TCKPS=1;
+    TMR4 = 0;
+    _T4IF = 0;
+    PR4 = 15999;
+    T4CONbits.TON = 1;
+    while (!_T4IF);
+    _T4IF = 0;
+    _INT0IF=0;
+    handleButtonPress();
+    _INT0IE=1;
+}
 
+//should go in sensor file?
 void __attribute__((__interrupt__, __auto_psv__)) _ADC1Interrupt() {
     _AD1IF = 0;
     digitalValues[ind++] = ADC1BUF0;
@@ -156,7 +175,11 @@ int main(void) {
     while (1) {
         switch (state) {
             case STAND_BY:
-                if (stateInit == 1) {
+                //buttonPress occurs here. state init is  set to 1. so you reinit 
+                //standby. next case, you go to instructions without running instructions init
+                 if (stateInit == 1) {
+                    if(state!=STAND_BY)
+                        break;
                     LATBbits.LATB12=0;
                     _T3IE=1;
                     lcd_cmd(RETURN_HOME); //necessary after scrolling
@@ -165,41 +188,25 @@ int main(void) {
                     lcd_printStr("Press button to start engine");
                     stateInit ^= 1;
                 }
-                _INT0IF = 0;
-                while (!_INT0IF);
-                _INT0IF = 0;
-                T4CON = 0;
-                TMR4 = 0;
-                _T4IF = 0;
-                PR4 = 15999;
-                T4CONbits.TON = 1;
-                while (!_T4IF);
-                _T4IF = 0;
-                handleButtonPress();
+                
                 break;
 
             case INSTRUCTIONS:
                 if (stateInit == 1) {
-                    lcd_cmd(RETURN_HOME);
+                    if(state!=INSTRUCTIONS)
+                        break;
+                    lcd_cmd(RETURN_HOME); //second INT0Interrupt occurred
                     lcd_setCursor(0, 0);
                     lcd_printStr("Press button, breathe until green light");
                     stateInit ^= 1;
                 }
-                _INT0IF = 0;
-                while (!_INT0IF);
-                _INT0IF = 0;  
-                T4CON = 0;
-                TMR4 = 0;
-                _T4IF = 0;
-                PR4 = 15999;
-                T4CONbits.TON = 1;
-                while (!_T4IF);
-                _T4IF = 0;
-                handleButtonPress();
+                
                 break;
 
             case TEST:
                 if (stateInit == 1) {
+                    if(state!=TEST)
+                        break;
                     _T3IE = 0; //stop shifting
                     lcd_cmd(RETURN_HOME);
                     lcd_cmd(CLEAR_DISPLAY);
@@ -224,11 +231,14 @@ int main(void) {
 
                 break;
             case RESULT:
+                //BUTTON press allows it to run through state init again.
                 if (stateInit == 1) {
+                    if(state!=RESULT)
+                        break;
                     mean = handleData(); //computes mean over all values in buffer, about 1 second of data acquisition
                     sprintf(BAC_estimate, "%5.1f", (DIGITAL_TO_BAC) * mean); //convert mean to BAC and place in string
 #ifdef DEBUG
-                            send_dac(10);
+                            //send_dac(10);
 #else
                             send_dac(mean); //digital value to the photon
 #endif
@@ -259,18 +269,10 @@ int main(void) {
                         writeColor(0, 0, 255); //indicate pass (blue)
                         //button press at this point brings user back to standby if count>CAR_ON_TIME
                     }
+                    
+                    stateInit^=1;
                 }
-                _INT0IF = 0;
-                while (!_INT0IF);
-                _INT0IF = 0;
-                T4CON = 0;
-                TMR4 = 0;
-                _T4IF = 0;
-                PR4 = 15999;
-                T4CONbits.TON = 1;
-                while (!_T4IF);
-                _T4IF = 0;
-                handleButtonPress();
+                
                 break;
         }
     }
