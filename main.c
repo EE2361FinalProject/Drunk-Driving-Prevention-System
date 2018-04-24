@@ -33,7 +33,6 @@ volatile int mean;
 volatile int digitalValues[1 << BUFFPOW];
 volatile int stateInit, ind;
 volatile int count;
-volatile int int0count;
 
 enum State_def {
     STAND_BY,
@@ -135,7 +134,6 @@ void handleButtonPress() {
 
 void __attribute__((__interrupt__, __auto_psv__)) _INT0Interrupt() {
     _INT0IE=0;
-    int0count++;
     T4CON = 0;
     T4CONbits.TCKPS=1;
     TMR4 = 0;
@@ -149,7 +147,6 @@ void __attribute__((__interrupt__, __auto_psv__)) _INT0Interrupt() {
     _INT0IE=1;
 }
 
-//should go in sensor file?
 void __attribute__((__interrupt__, __auto_psv__)) _ADC1Interrupt() {
     _AD1IF = 0;
     digitalValues[ind++] = ADC1BUF0;
@@ -162,7 +159,6 @@ void __attribute__((__interrupt__, __auto_psv__)) _T1Interrupt() {
 }
 
 //Timer interrupt to scroll
-
 void __attribute__((__interrupt__, __auto_psv__)) _T3Interrupt() {
     _T3IF = 0;
     lcd_cmd(SHIFT); //Shift display
@@ -175,8 +171,9 @@ int main(void) {
     while (1) {
         switch (state) {
             case STAND_BY:
-                //buttonPress occurs here. state init is  set to 1. so you reinit 
-                //standby. next case, you go to instructions without running instructions init
+                //buttonPress may occur here. state init is set to 1. so you reinit 
+                //standby. next case, you go to instructions without running instructions init. 
+                //this is why it is necessary to check the state upon entrance to if stateInit=1 body
                  if (stateInit == 1) {
                     if(state!=STAND_BY)
                         break;
@@ -195,7 +192,7 @@ int main(void) {
                 if (stateInit == 1) {
                     if(state!=INSTRUCTIONS)
                         break;
-                    lcd_cmd(RETURN_HOME); //second INT0Interrupt occurred
+                    lcd_cmd(RETURN_HOME);
                     lcd_setCursor(0, 0);
                     lcd_printStr("Press button, breathe until green light");
                     stateInit ^= 1;
@@ -249,8 +246,8 @@ int main(void) {
                     lcd_setCursor(0, 1);
                     lcd_printStr(BAC_estimate);
                     count = 0;
-                    TMR1 = 0; //Don't know why this was set to 1, changed it to 0.
-                    while (count < 5); //delay so that the BAC is shown
+                    TMR1 = 0; 
+                    while (count < 4); //delay so that the BAC is shown
                     if (mean > THRESHOLD) {
                         lcd_cmd(CLEAR_DISPLAY);
                         lcd_setCursor(0, 0);
