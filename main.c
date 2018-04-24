@@ -177,7 +177,7 @@ int main(void) {
             case STAND_BY:
                 //buttonPress occurs here. state init is  set to 1. so you reinit 
                 //standby. next case, you go to instructions without running instructions init
-                if (stateInit == 1) {
+                 if (stateInit == 1) {
                     if(state!=STAND_BY)
                         break;
                     LATBbits.LATB12=0;
