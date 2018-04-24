@@ -23,7 +23,7 @@
 #define SHIFT 24
 #define RETURN_HOME 2
 #define CLEAR_DISPLAY 1
-#define BREATHING_LENGTH 10
+#define BREATHING_LENGTH 5
 #define CAR_ON_TIME 5
 #define FAILED_RESULT_TIME 5 
 #define THRESHOLD 10
@@ -228,7 +228,6 @@ int main(void) {
 
                 break;
             case RESULT:
-                //BUTTON press allows it to run through state init again.
                 if (stateInit == 1) {
                     if(state!=RESULT)
                         break;
