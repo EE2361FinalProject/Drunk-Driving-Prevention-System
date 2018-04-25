@@ -26,7 +26,7 @@
 //Buffer macros
 #define BUFFPOW 11
 #define SHIFT 24
-#define MAXBUFFPOW 6 //Size of buffer that track maximums
+#define SAMPLES 64 //Must be less than 1 << BUFFPOW
 
 //Timing macros
 #define RETURN_HOME 2
@@ -39,8 +39,8 @@
 #define DEBUG
 
 volatile int mean, smallestMaxIndex = 0;
-volatile int digitalValues[1 << BUFFPOW], maxDigitalValues [1 << MAXBUFFPOW];
-volatile int stateInit, ind;
+volatile int digitalValues[1 << BUFFPOW]; //Max-heap to be used in data calculations, index 0 not used
+volatile int stateInit, ind = 1;
 volatile int count;
 
 enum State_def {
@@ -66,16 +66,14 @@ void __attribute__((__interrupt__, __auto_psv__)) _INT0Interrupt() {
     _INT0IE=1;
 }
 
-//ADC interrupt to put data in circular buffer and 
+//ADC interrupt to put data in circular buffer
 void __attribute__((__interrupt__, __auto_psv__)) _ADC1Interrupt() {
-    _AD1IF = 0;
+    _AD1IF = 0; 
     digitalValues[ind++] = ADC1BUF0;
-    if (digitalValues[ind - 1] > maxDigitalValues[smallestMaxIndex]) {
-         maxDigitalValues[smallestMaxIndex] = digitalValues[ind - 1];
-        smallestMaxIndex = findSmallestMaxIndex ();
-    }
-    ind &= ((1 << BUFFPOW) - 1);
-    
+    ind &= (1 << BUFFPOW) - 1;
+    //Skip zero index in digital values array
+    if (!ind)
+        ind++;
 }
 
 //Timer interrupt to keep track of time in state
@@ -128,25 +126,46 @@ void setup() {
     LATBbits.LATB12 = 0; //Make sure engine is off
 }
 
-//Function to find the smallest element of an array of max digital values in linear time
-int findSmallestMaxIndex () {
-    static int i;
-    int min = 1025, index;
-    for (i = 0; i < (1 << MAXBUFFPOW); i++) {
-        if (min > maxDigitalValues[i]) {
-             index = i;
-             min = maxDigitalValues [i];
+//Function that maintains the max heap property in digital values
+void maxHeapify (int i) {
+    static int l, r, largest, heap_size = 1 << BUFFPOW;
+    while (i <= heap_size) {
+        l = i << 1;
+        r = (i << 1) + 1;
+        if (l <= heap_size && digitalValues[l] > digitalValues [i]) 
+            largest = l;
+        else 
+            largest = i;
+        if (r <= heap_size && A[r] > A[largest]) 
+            largest = r;
+        if (largest != i) {
+            int temp = A[i];
+            A[i] = A[largest];
+            A[largest] = temp;
+            i = largest;
         }
+        else 
+            return;
     }
-    return index;
 }
 
-//Function to calculate a digital mean of sensor values
+//Transforms digital values into a max heap in O(1 << BUFFPOW), max value is afterwards indexed at 1
+void buildMaxHeap () {
+    static int heap_size = 1 << BUFFPOW, i; 
+    for (i = heap_size >> 1; i > 0; i--)
+        maxHeapify (i);
+}
+
+//Function to calculate a digital mean of sample # of max sensor sensor values, extracts samples # of heap in O(SAMPLES*lg(2^BUFFPOW))
 int averageData() {
-    int i, prev_mean, mean = 0;
-    for (i = 0; i < (1 << MAXBUFFPOW); i++) {
+    buildMaxHeap();
+    int i, prev_mean, mean = 0, max;
+    for (i = 0; i < SAMPLES; i++) {
         prev_mean = mean;
-        mean += maxDigitalValues[i] / (i + 1);
+        max = digitalValues [1];
+        digitalValues [1] = 0;
+        maxHeapify(1);
+        mean += max / (i + 1);
     }
     return mean;
 }
