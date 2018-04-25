@@ -5,7 +5,9 @@
 #ifdef DEBUG
 #define THRESHOLD 980
 #else
-#define THRESHOLD 0.8 //TODO: Cement this value
+#define THRESHOLD 0.08 
+#define DIGITAL_TO_BAC (double) 0.0008515
+#define DAC_OFFSET 21
 #endif
 
 bool publish = false;
@@ -13,6 +15,7 @@ bool publish = false;
 #ifdef DEBUG 
 int c;
 String sC = "";
+bool firstTime = true;
 #else
 int bac = 0;
 String sBAC = "";
@@ -29,10 +32,10 @@ void receiveEvent (int howMany) {
     while (Wire.available()) {
         publish = true;
         #ifdef DEBUG
-	if (firstTime) {
+	    if (firstTime) {
             c = Wire.read () * 4;
             firstTime = false;
-	}
+	    }
         else {
             c += Wire.read ();
             Serial.print (c);
@@ -42,8 +45,10 @@ void receiveEvent (int howMany) {
            bac = Wire.read() * 4;
            firstTime = false;
         }
-        else
+        else {
            bac += Wire.read ();
+           bac = (bac- DAC_OFFSET) * DIGITAL_TO_BAC;
+        }
         #endif
     }
 }
