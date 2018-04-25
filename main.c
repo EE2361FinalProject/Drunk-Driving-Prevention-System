@@ -38,7 +38,7 @@
 
 #define DEBUG
 
-volatile int mean, smallestMaxIndex = 0;
+volatile int mean;
 volatile int digitalValues[1 << BUFFPOW]; //Max-heap to be used in data calculations, index 0 not used
 volatile int stateInit, ind = 1;
 volatile int count;
