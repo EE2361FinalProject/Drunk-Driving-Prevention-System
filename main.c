@@ -19,11 +19,14 @@
 #pragma config FNOSC=FRCPLL
 
 //Conversion factor to convert ADC digital value to BAC
-#define DIGITAL_TO_BAC (double) 1/1000 //currently arbitary conversion factor
+#define DIGITAL_TO_BAC_1 (float) 8.515
+#define DIGITAL_TO_BAC_2 (float) 0.0001
+#define DAC_OFFSET 21
 
 //Buffer macros
 #define BUFFPOW 11
 #define SHIFT 24
+#define MAXBUFFPOW 6 //Size of buffer that track maximums
 
 //Timing macros
 #define RETURN_HOME 2
@@ -31,12 +34,12 @@
 #define BREATHING_LENGTH 5
 #define CAR_ON_TIME 5
 #define FAILED_RESULT_TIME 5 
-#define THRESHOLD 10
+#define THRESHOLD (float) 0.08 //Threshold for being charged with DUI in the United States of America
 
 #define DEBUG
 
-volatile int mean;
-volatile int digitalValues[1 << BUFFPOW];
+volatile int mean, smallestMaxIndex = 0;
+volatile int digitalValues[1 << BUFFPOW], maxDigitalValues [1 << MAXBUFFPOW];
 volatile int stateInit, ind;
 volatile int count;
 
@@ -63,11 +66,16 @@ void __attribute__((__interrupt__, __auto_psv__)) _INT0Interrupt() {
     _INT0IE=1;
 }
 
-//ADC interrupt to put data in circular buffer
+//ADC interrupt to put data in circular buffer and 
 void __attribute__((__interrupt__, __auto_psv__)) _ADC1Interrupt() {
     _AD1IF = 0;
     digitalValues[ind++] = ADC1BUF0;
+    if (digitalValues[ind - 1] > maxDigitalValues[smallestMaxIndex]) {
+         maxDigitalValues[smallestMaxIndex] = digitalValues[ind - 1];
+        smallestMaxIndex = findSmallestMaxIndex ();
+    }
     ind &= ((1 << BUFFPOW) - 1);
+    
 }
 
 //Timer interrupt to keep track of time in state
@@ -120,12 +128,25 @@ void setup() {
     LATBbits.LATB12 = 0; //Make sure engine is off
 }
 
+//Function to find the smallest element of an array of max digital values in linear time
+int findSmallestMaxIndex () {
+    static int i;
+    int min = 1025, index;
+    for (i = 0; i < (1 << MAXBUFFPOW); i++) {
+        if (min > maxDigitalValues[i]) {
+             index = i;
+             min = maxDigitalValues [i];
+        }
+    }
+    return index;
+}
+
 //Function to calculate a digital mean of sensor values
 int averageData() {
     int i, prev_mean, mean = 0;
-    for (i = 0; i < (1 << BUFFPOW); i++) {
+    for (i = 0; i < (1 << MAXBUFFPOW); i++) {
         prev_mean = mean;
-        mean += digitalValues[i] / (i + 1);
+        mean += maxDigitalValues[i] / (i + 1);
     }
     return mean;
 }
@@ -180,9 +201,9 @@ void handleButtonPress() {
 void handleResultData()
 {
     mean = averageData(); //computes mean over all values in buffer, about 1 second of data acquisition
-    sprintf(BAC_estimate, "%5.1f", (DIGITAL_TO_BAC) * mean); //convert mean to BAC and place in string
+    sprintf(BAC_estimate, "%5.1f", (DIGITAL_TO_BAC_1) * (mean - DAC_OFFSET) * DIGITAL_TO_BAC_2); //convert mean to BAC and place in string
 #ifdef DEBUG
-    //send_dac(10);
+    send_dac(950);
 #else
     send_dac(mean); //digital value to the photon to be updated on Google Sheets
 #endif
