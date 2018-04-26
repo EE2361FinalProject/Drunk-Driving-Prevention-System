@@ -39,7 +39,7 @@
 #define DEBUG
 
 volatile int mean;
-volatile int digitalValues[1 << BUFFPOW]; //Max-heap to be used in data calculations, index 0 not used
+volatile int digitalValues[1 << BUFFPOW]; //Max-heap to be used in data calculations
 volatile int stateInit, ind = 1;
 volatile int count;
 
@@ -55,8 +55,8 @@ enum State_def {
 void maxHeapify(int i) {
     static int l, r, largest, heap_size = 1 << BUFFPOW;
     while (i <= heap_size) {
-        l = i << 1;
-        r = (i << 1) + 1;
+        l = (i << 1) + 1;
+        r = (i << 1) + 2;
         if (l <= heap_size && digitalValues[l] > digitalValues [i])
             largest = l;
         else
@@ -77,7 +77,7 @@ void maxHeapify(int i) {
 
 void buildMaxHeap() {
     static int heap_size = 1 << BUFFPOW, i;
-    for (i = heap_size >> 1; i > 0; i--)
+    for (i = ((heap_size - 1) >> 1); i >= 0; i--)
         maxHeapify(i);
 }
 
@@ -88,9 +88,9 @@ int averageData() {
     int i, prev_mean, mean = 0, max;
     for (i = 0; i < SAMPLES; i++) {
         prev_mean = mean;
-        max = digitalValues [1];
-        digitalValues [1] = 0;
-        maxHeapify(1);
+        max = digitalValues [0];
+        digitalValues [0] = -1;
+        maxHeapify(0);
         mean += max / (i + 1);
     }
     return mean;
@@ -156,7 +156,7 @@ void handleButtonPress() {
             }
             break;
         case INSTRUCTIONS:
-            if (count > 1) //ensure user isn't speeding thorugh states / reads instructions
+            if (count > 1) //ensure user isn't speeding through states / reads instructions
             {
                 state = TEST;
                 count = 0;
