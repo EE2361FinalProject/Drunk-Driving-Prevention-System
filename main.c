@@ -212,9 +212,6 @@ void __attribute__((__interrupt__, __auto_psv__)) _ADC1Interrupt() {
     _AD1IF = 0;
     digitalValues[ind++] = ADC1BUF0;
     ind &= (1 << BUFFPOW) - 1;
-    //Skip zero index in digital values array
-    if (!ind)
-        ind++;
 }
 
 //Timer interrupt to keep track of time in state
