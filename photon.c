@@ -1,24 +1,6 @@
 #include "xc.h"
 #include "photon.h"
 
-//#define DEBUG //Uncomment line to debug with main code
-
-#ifdef DEBUG
-// CW1: FLASH CONFIGURATION WORD 1 (see PIC24 Family Reference Manual 24.1)
-#pragma config ICS = PGx1 // Comm Channel Select (Emulator EMUC1/EMUD1 pins are shared with PGC1/PGD1)
-#pragma config FWDTEN = OFF // Watchdog Timer Enable (Watchdog Timer is disabled)
-#pragma config GWRP = OFF // General Code Segment Write Protect (Writes to program memory are allowed)
-#pragma config GCP = OFF // General Code Segment Code Protect (Code protection is disabled)
-#pragma config JTAGEN = OFF // JTAG Port Enable (JTAG port is disabled)
-// CW2: FLASH CONFIGURATION WORD 2 (see PIC24 Family Reference Manual 24.1)
-#pragma config I2C1SEL = PRI // I2C1 Pin Location Select (Use default SCL1/SDA1 pins)
-#pragma config IOL1WAY = OFF // IOLOCK Protection (IOLOCK may be changed via unlocking seq)
-#pragma config OSCIOFNC = ON // Primary Oscillator I/O Function (CLKO/RC15 functions as I/O pin)
-#pragma config FCKSM = CSECME // Clock Switching and Monitor (Clock switching is enabled,
-// Fail-Safe Clock Monitor is enabled)
-#pragma config FNOSC = FRCPLL // Oscillator Select (Fast RC Oscillator with PLL module (FRCPLL))
-#endif
-
 void photon_init () {
     CLKDIVbits.RCDIV = 0;
     AD1PCFGbits.PCFG4 = 1; //SDA2
@@ -44,48 +26,9 @@ void photon_cmd (char command) {
     while (I2C2CONbits.PEN == 1);
 }
 
-#ifndef DEBUG
 void send_dac (int mean) {
     photon_cmd (mean >> 2);
     photon_cmd (mean & 3);
 }
-#endif
 
-/*
- * Code to test I2C with Photon: Code characters 1 by 1
- * The character is printed every 3 seconds
- * Baud Rate = 100 kHz
- */
 
-#ifdef DEBUG
-
-int main(void) {
-    photon_init ();
-    char c = 'A';
-    int i;
-    T1CON = 0x0030; //PRE = 256
-    TMR1 = 0;
-    PR1 = 62499; //1 second delay
-    _T1IF = 0;
-    while (1) {
-        
-        T1CONbits.TON = 1;
-        //Wait 20 seconds
-        for (i = 0; i < 20; i++)
-        {
-            while (_T1IF ==0);
-            _T1IF = 0;
-        }
-        photon_cmd (c++);
-        //Threshold is 'L' in Photon_I2C.ino
-        if (c == 'M')
-            c = 'A';
-        T1CONbits.TON = 0;
-        TMR1 = 0;
-        
-    }
-    
-    return 0;
-}
-
-#endif

@@ -18,30 +18,12 @@
 #pragma config FCKSM=CSECME
 #pragma config FNOSC=FRCPLL
 
-//Conversion factor to convert ADC digital value to BAC
-#define DIGITAL_TO_BAC_1  8.515
-#define DIGITAL_TO_BAC_2  0.0001
-#define DAC_OFFSET 21
-
-//Buffer macros
-#define BUFFPOW 11
-#define SHIFT 24
-#define SAMPLES 64 //Must be less than 1 << BUFFPOW
-
 //Timing macros
-#define RETURN_HOME 2
-#define CLEAR_DISPLAY 1
 #define BREATHING_LENGTH 4
 #define CAR_ON_TIME 5
 #define FAILED_RESULT_TIME 5 
-#define THRESHOLD 115 //Threshold for being charged with DUI in the United States of America = 0.08
 
-//#define DEBUG
-
-volatile int mean;
-volatile int digitalValues[1 << BUFFPOW]; //Max-heap to be used in data calculations
-volatile int stateInit, ind = 0;
-volatile int count, breakpoint = 0;
+volatile int mean, stateInit, count;
 
 enum State_def {
     STAND_BY,
@@ -49,52 +31,6 @@ enum State_def {
     TEST,
     RESULT
 } state;
-
-//Function that maintains the max heap property in digital values
-
-void maxHeapify(int i) {
-    static int l, r, largest, heap_size = 1 << BUFFPOW;
-    while (i <= heap_size) {
-        l = (i << 1) + 1;
-        r = (i << 1) + 2;
-        if (l < heap_size && digitalValues[l] > digitalValues [i])
-            largest = l;
-        else
-            largest = i;
-        if (r < heap_size && digitalValues[r] > digitalValues[largest])
-            largest = r;
-        if (largest != i) {
-            int temp = digitalValues[i];
-            digitalValues[i] = digitalValues[largest];
-            digitalValues[largest] = temp;
-            i = largest;
-        } else
-            return;
-    }
-}
-
-//Transforms digital values into a max heap in O(1 << BUFFPOW), max value is afterwards indexed at 1
-
-void buildMaxHeap() {
-    static int heap_size = 1 << BUFFPOW, i;
-    for (i = ((heap_size - 1) >> 1); i >= 0; i--)
-        maxHeapify(i);
-}
-
-//Function to calculate a digital mean of sample # of max sensor sensor values, extracts samples # of heap in O(SAMPLES*lg(2^BUFFPOW))
-
-int averageData() {
-    buildMaxHeap();
-    int i, prev_mean, mean = 0, max;
-    for (i = 0; i < SAMPLES; i++) {
-        prev_mean = mean;
-        max = digitalValues [0];
-        digitalValues [0] = -1;
-        maxHeapify(0);
-        mean += (max - prev_mean) / (i + 1);
-    }
-    return mean;
-}
 
 //Function to send data to Photon / decide what to do with data
 
@@ -104,12 +40,8 @@ void handleResultData() {
     if (mean > DAC_OFFSET)
         sprintf(BAC_estimate, "%1.4f", (DIGITAL_TO_BAC_1) * (mean - DAC_OFFSET) * (DIGITAL_TO_BAC_2)); //convert mean to BAC and place in string
     else
-        sprintf (BAC_estimate, "%1.1f", 0.0);
-#ifdef DEBUG
-    send_dac(950);
-#else
+        sprintf(BAC_estimate, "%1.1f", 0.0);  
     send_dac(mean); //digital value to the photon to be updated on Google Sheets
-#endif
     //print result to LCD screen
     lcd_cmd(RETURN_HOME);
     lcd_cmd(CLEAR_DISPLAY);
@@ -207,14 +139,6 @@ void __attribute__((__interrupt__, __auto_psv__)) _INT0Interrupt() {
     _INT0IF = 0;
     handleButtonPress();
     _INT0IE = 1;
-}
-
-//ADC interrupt to put data in circular buffer
-
-void __attribute__((__interrupt__, __auto_psv__)) _ADC1Interrupt() {
-    _AD1IF = 0;
-    digitalValues[ind++] = ADC1BUF0;
-    ind &= (1 << BUFFPOW) - 1;
 }
 
 //Timer interrupt to keep track of time in state
