@@ -38,17 +38,13 @@ void receiveEvent (int howMany) {
  */
  
 void bacHandler (const char *event, const char *data) {
-   
     if (bac > THRESHOLD) {
         Particle.publish ("BAC_High");
     }
-    
 }
 
 
 void setup() {
-	
-    
     Particle.connect();
     if (!Wire.isEnabled ()) {
         Wire.begin(0x1);
