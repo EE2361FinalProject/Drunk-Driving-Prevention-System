@@ -22,6 +22,8 @@ void lcd_cmd(char command) //sends a series of data to lcd including a start bit
 
 void lcd_setCursor(char x, char y) 
 {
+    int i = 1000;
+    while (i--);
     char Loc=y<<6; //y bit is sixth in from left
     Loc|=x; //x location in command is first 3 bits
     Loc+=0x80; //necessary part for setting location with lcd_cmd
