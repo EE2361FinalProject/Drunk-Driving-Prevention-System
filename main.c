@@ -19,8 +19,8 @@
 #pragma config FNOSC=FRCPLL
 
 //Conversion factor to convert ADC digital value to BAC
-#define DIGITAL_TO_BAC_1 (float) 8.515
-#define DIGITAL_TO_BAC_2 (float) 0.0001
+#define DIGITAL_TO_BAC_1  8.515
+#define DIGITAL_TO_BAC_2  0.0001
 #define DAC_OFFSET 21
 
 //Buffer macros
@@ -31,17 +31,17 @@
 //Timing macros
 #define RETURN_HOME 2
 #define CLEAR_DISPLAY 1
-#define BREATHING_LENGTH 5
+#define BREATHING_LENGTH 4
 #define CAR_ON_TIME 5
 #define FAILED_RESULT_TIME 5 
-#define THRESHOLD (float) 0.08 //Threshold for being charged with DUI in the United States of America
+#define THRESHOLD 115 //Threshold for being charged with DUI in the United States of America = 0.08
 
-#define DEBUG
+//#define DEBUG
 
 volatile int mean;
 volatile int digitalValues[1 << BUFFPOW]; //Max-heap to be used in data calculations
-volatile int stateInit, ind = 1;
-volatile int count;
+volatile int stateInit, ind = 0;
+volatile int count, breakpoint = 0;
 
 enum State_def {
     STAND_BY,
@@ -57,11 +57,11 @@ void maxHeapify(int i) {
     while (i <= heap_size) {
         l = (i << 1) + 1;
         r = (i << 1) + 2;
-        if (l <= heap_size && digitalValues[l] > digitalValues [i])
+        if (l < heap_size && digitalValues[l] > digitalValues [i])
             largest = l;
         else
             largest = i;
-        if (r <= heap_size && digitalValues[r] > digitalValues[largest])
+        if (r < heap_size && digitalValues[r] > digitalValues[largest])
             largest = r;
         if (largest != i) {
             int temp = digitalValues[i];
@@ -91,7 +91,7 @@ int averageData() {
         max = digitalValues [0];
         digitalValues [0] = -1;
         maxHeapify(0);
-        mean += max / (i + 1);
+        mean += (max - prev_mean) / (i + 1);
     }
     return mean;
 }
@@ -101,7 +101,10 @@ int averageData() {
 void handleResultData() {
     char BAC_estimate[20]; //string for outputting to LCD
     mean = averageData(); //computes mean over all values in buffer, about 1 second of data acquisition
-    sprintf(BAC_estimate, "%5.1f", (DIGITAL_TO_BAC_1) * (mean - DAC_OFFSET) * DIGITAL_TO_BAC_2); //convert mean to BAC and place in string
+    if (mean > DAC_OFFSET)
+        sprintf(BAC_estimate, "%1.4f", (DIGITAL_TO_BAC_1) * (mean - DAC_OFFSET) * (DIGITAL_TO_BAC_2)); //convert mean to BAC and place in string
+    else
+        sprintf (BAC_estimate, "%1.1f", 0.0);
 #ifdef DEBUG
     send_dac(950);
 #else
@@ -278,12 +281,13 @@ int main(void) {
                 if (stateInit == 1) {
                     if (state != STAND_BY)
                         break;
+                    writeColor(255,255,255);
+                    _T3IE = 1; //enable scrolling
                     LATBbits.LATB12 = 0; //ensure engine is off
                     lcd_cmd(RETURN_HOME); //necessary after scrolling
                     lcd_cmd(CLEAR_DISPLAY);
                     lcd_setCursor(0, 0);
                     lcd_printStr("Press button to start engine");
-                    _T3IE = 1; //enable scrolling
                     stateInit ^= 1;
                 }
                 break;
