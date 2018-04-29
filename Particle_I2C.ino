@@ -69,7 +69,6 @@ void setup() {
     Particle.connect();
     if (!Wire.isEnabled ()) {
         Wire.begin(0x1);
-        Serial.println ("Wire is enabled");
         Wire.onReceive (receiveEvent);
     }
     
