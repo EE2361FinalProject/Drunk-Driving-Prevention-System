@@ -41,7 +41,6 @@ void receiveEvent (int howMany) {
         }
         else {
            bac += Wire.read ();
-           Serial.println(bac);
            if (bac > DAC_OFFSET) {
                 realBAC = (bac - DAC_OFFSET) * DIGITAL_TO_BAC_1 / DIGITAL_TO_BAC_2;
            }
@@ -66,8 +65,6 @@ void bacHandler (const char *event, const char *data) {
 
 
 void setup() {
-	
-	Serial.begin (9600);
     
     Particle.connect();
     if (!Wire.isEnabled ()) {
